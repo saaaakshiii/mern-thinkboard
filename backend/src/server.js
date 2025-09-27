@@ -4,19 +4,23 @@ import { connectDB } from "./config/db.js";
 import dotenv from "dotenv";
 import rateLimiter from "./middleware/rateLimiter.js";
 import cors from "cors";
+import path from "path";
 
 dotenv.config(); // to get the mongo_uri
 // console.log(process.env.MONGO_URI);
 
 const app = express();
 const port = process.env.PORT || 5001;
+const __dirname = path.resolve(); // this will give the source of backend
 
 //middleware- used to get access to req.body, to get access to the values that we send as json
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-  })
-); // To get rid of the cors error
+if (process.env.NODE_ENV !== "production") {
+  app.use(
+    cors({
+      origin: "http://localhost:5173",
+    })
+  ); // To get rid of the cors error
+}
 app.use(express.json()); // this middleware will parse the JSON bodies: req.body
 app.use(rateLimiter); // to limit the number of response
 
@@ -26,6 +30,14 @@ app.use(rateLimiter); // to limit the number of response
 //   next(); // before fullfilling the request, middleware will be called and then the request will be fulfilled
 // });
 app.use("/api/notes", notesRoutes);
+
+//Only if the app is at prod level (render.com)
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/dist")));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend", "dist", "index.html"));
+  });
+}
 
 // We first want to connect the database and then connect to the server
 // Once the DB is connected then only go ahead and listen
